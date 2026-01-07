@@ -40,9 +40,9 @@ const UsersList: React.FC = () => {
         fetchUsers();
     }, []);
 
-    if (loading) return <div className="text-sm text-slate-400">Loading users...</div>;
+    if (loading) return <div className="text-sm text-slate-400">Carregando usuários...</div>;
 
-    if (users.length === 0) return <div className="text-sm text-slate-400">No registered users found.</div>;
+    if (users.length === 0) return <div className="text-sm text-slate-400">Nenhum usuário registrado encontrado.</div>;
 
     return (
         <table className="w-full text-left text-sm text-slate-300">
@@ -50,7 +50,7 @@ const UsersList: React.FC = () => {
                 <tr>
                     <th className="px-4 py-3 rounded-tl-lg">Email</th>
                     <th className="px-4 py-3">CPF</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Registered At</th>
+                    <th className="px-4 py-3 rounded-tr-lg">Registrado em</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
@@ -68,11 +68,84 @@ const UsersList: React.FC = () => {
     );
 };
 
+const AuthorizedCpfsList: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+    const [cpfs, setCpfs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchCpfs = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('authorized_cpfs')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (data) setCpfs(data);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchCpfs();
+    }, [refreshTrigger]);
+
+    const handleDelete = async (cpf: string) => {
+        if (!window.confirm(`Tem certeza que deseja remover a autorização do CPF ${cpf}?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('authorized_cpfs')
+                .delete()
+                .eq('cpf', cpf);
+
+            if (error) throw error;
+            fetchCpfs();
+        } catch (error) {
+            alert(`Erro ao remover CPF: ${(error as Error).message}`);
+        }
+    };
+
+    if (loading && cpfs.length === 0) return <div className="text-sm text-slate-400">Carregando CPFs...</div>;
+
+    if (cpfs.length === 0) return <div className="text-sm text-slate-400">Nenhum CPF autorizado encontrado.</div>;
+
+    return (
+        <table className="w-full text-left text-sm text-slate-300">
+            <thead className="text-xs uppercase bg-slate-700/50 text-slate-400">
+                <tr>
+                    <th className="px-4 py-3 rounded-tl-lg">CPF</th>
+                    <th className="px-4 py-3">Autorizado em</th>
+                    <th className="px-4 py-3 rounded-tr-lg text-right">Ações</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+                {cpfs.map((c) => (
+                    <tr key={c.cpf} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs">{c.cpf}</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">
+                            {new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                            <button
+                                onClick={() => handleDelete(c.cpf)}
+                                className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                title="Remover Autorização"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+};
+
+
 const Home: React.FC = () => {
     const [promptData, setPromptData] = useState<PromptData>(INITIAL_STATE);
     const [user, setUser] = useState<User | null>(null);
     const [authCpf, setAuthCpf] = useState('');
     const [authMessage, setAuthMessage] = useState('');
+    const [refreshCpfs, setRefreshCpfs] = useState(0);
     const navigate = useNavigate();
 
     const [testResult, setTestResult] = useState<string | null>(null);
@@ -100,18 +173,20 @@ const Home: React.FC = () => {
 
     const handleAuthorizeCpf = async () => {
         if (!authCpf) return;
-        setAuthMessage('Authorizing...');
+        setAuthMessage('Autorizando...');
         try {
             const { error } = await supabase.from('authorized_cpfs').insert({ cpf: authCpf });
             if (error) throw error;
-            setAuthMessage(`CPF ${authCpf} authorized successfully!`);
+            setAuthMessage(`CPF ${authCpf} autorizado com sucesso!`);
             setAuthCpf('');
+            setRefreshCpfs(prev => prev + 1);
             // Clear message after 3 seconds
             setTimeout(() => setAuthMessage(''), 3000);
         } catch (error) {
-            setAuthMessage(`Error: ${(error as Error).message}`);
+            setAuthMessage(`Erro: ${(error as Error).message}`);
         }
     };
+
 
     const isAdmin = user?.email === 'dilamarhs@gmail.com';
 
@@ -265,14 +340,14 @@ const Home: React.FC = () => {
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="text-green-400" size={24} />
                             <div>
-                                <h3 className="font-semibold">Admin Control</h3>
-                                <p className="text-xs text-slate-400">Authorize user registrations</p>
+                                <h3 className="font-semibold text-sm sm:text-base">Painel Administrativo</h3>
+                                <p className="text-xs text-slate-400">Gerenciar autorizações e usuários</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                             <input
                                 type="text"
-                                placeholder="Enter CPF to authorize"
+                                placeholder="CPF para autorizar"
                                 value={authCpf}
                                 onChange={(e) => setAuthCpf(e.target.value)}
                                 className="px-3 py-2 rounded text-slate-900 text-sm w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-green-400"
@@ -281,7 +356,7 @@ const Home: React.FC = () => {
                                 onClick={handleAuthorizeCpf}
                                 className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm font-medium transition-colors whitespace-nowrap"
                             >
-                                Authorize
+                                Autorizar
                             </button>
                         </div>
                         {authMessage && (
@@ -289,20 +364,43 @@ const Home: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Registered Users List */}
-                    <div className="max-w-7xl mx-auto mt-6">
-                        <details className="group">
-                            <summary className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-slate-300 hover:text-white transition-colors">
-                                <span className="material-symbols-outlined transition-transform group-open:rotate-90">arrow_right</span>
-                                View Registered Users
-                            </summary>
-                            <div className="mt-4 overflow-x-auto bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-                                <UsersList />
-                            </div>
-                        </details>
+                    {/* Admin Lists */}
+                    <div className="max-w-7xl mx-auto mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Authorized CPFs List */}
+                        <div className="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+                            <details className="group" open>
+                                <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-sm font-medium text-slate-300 hover:text-white transition-colors bg-slate-800/50">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined transition-transform group-open:rotate-90">arrow_right</span>
+                                        CPFs Autorizados
+                                    </div>
+                                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Gerenciamento</span>
+                                </summary>
+                                <div className="p-4 overflow-x-auto">
+                                    <AuthorizedCpfsList refreshTrigger={refreshCpfs} />
+                                </div>
+                            </details>
+                        </div>
+
+                        {/* Registered Users List */}
+                        <div className="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+                            <details className="group">
+                                <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-sm font-medium text-slate-300 hover:text-white transition-colors bg-slate-800/50">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined transition-transform group-open:rotate-90">arrow_right</span>
+                                        Usuários Registrados (Profiles)
+                                    </div>
+                                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Leitura</span>
+                                </summary>
+                                <div className="p-4 overflow-x-auto">
+                                    <UsersList />
+                                </div>
+                            </details>
+                        </div>
                     </div>
                 </div>
             )}
+
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
