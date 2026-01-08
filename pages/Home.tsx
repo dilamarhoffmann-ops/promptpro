@@ -27,20 +27,38 @@ const UsersList: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: false });
+    const fetchUsers = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-            if (data) setUsers(data);
-            setLoading(false);
-        };
+        if (data) setUsers(data);
+        setLoading(false);
+    };
+
+    useEffect(() => {
         fetchUsers();
     }, []);
 
-    if (loading) return <div className="text-sm text-slate-400">Carregando usuários...</div>;
+    const handleDeleteUser = async (id: string, email: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir o perfil do usuário ${email}? Isso removerá os dados do perfil, mas o login continuará existindo no sistema de autenticação até ser removido manualmente pelo administrador no console do Supabase.`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            fetchUsers();
+        } catch (error) {
+            alert(`Erro ao excluir usuário: ${(error as Error).message}`);
+        }
+    };
+
+    if (loading && users.length === 0) return <div className="text-sm text-slate-400">Carregando usuários...</div>;
 
     if (users.length === 0) return <div className="text-sm text-slate-400">Nenhum usuário registrado encontrado.</div>;
 
@@ -49,7 +67,8 @@ const UsersList: React.FC = () => {
             <thead className="text-xs uppercase bg-slate-700/50 text-slate-400">
                 <tr>
                     <th className="px-4 py-3 rounded-tl-lg">Email</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Registrado em</th>
+                    <th className="px-4 py-3">Registrado em</th>
+                    <th className="px-4 py-3 rounded-tr-lg text-right">Ações</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
@@ -58,6 +77,15 @@ const UsersList: React.FC = () => {
                         <td className="px-4 py-3">{u.email}</td>
                         <td className="px-4 py-3 text-slate-500">
                             {new Date(u.created_at).toLocaleDateString()} {new Date(u.created_at).toLocaleTimeString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                            <button
+                                onClick={() => handleDeleteUser(u.id, u.email)}
+                                className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                title="Excluir Perfil"
+                            >
+                                <Trash2 size={16} />
+                            </button>
                         </td>
                     </tr>
                 ))}

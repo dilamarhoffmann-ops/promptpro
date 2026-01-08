@@ -39,6 +39,11 @@ create policy "Usuário pode editar próprio perfil"
   on public.profiles for update
   using (auth.uid() = id);
 
+-- Política: Admin pode excluir qualquer perfil
+create policy "Admin pode excluir perfis"
+  on public.profiles for delete
+  using (auth.jwt() ->> 'email' = 'dilamarhs@gmail.com');
+
 -- 3. Trigger para criar Perfil automaticamente ao criar Usuário no Auth
 -- Pega o CPF se existir (pode vir de cadastros antigos ou meta customizada)
 create or replace function public.handle_new_user()
