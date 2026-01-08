@@ -7,7 +7,6 @@ export const Login: React.FC = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [cpf, setCpf] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +36,8 @@ export const Login: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Admin bypass for first user creation
-        if (!cpf && email !== 'dilamarhs@gmail.com') {
-            setError('Please enter your CPF to sign up.');
+        if (!email || !password) {
+            setError('Please enter your email and password.');
             setLoading(false);
             return;
         }
@@ -48,9 +46,9 @@ export const Login: React.FC = () => {
             // Check authorization (skip for admin)
             if (email !== 'dilamarhs@gmail.com') {
                 const { data, error: authError } = await supabase
-                    .from('authorized_cpfs')
-                    .select('cpf')
-                    .eq('cpf', cpf)
+                    .from('authorized_emails')
+                    .select('email')
+                    .eq('email', email)
                     .maybeSingle();
 
                 if (authError) {
@@ -59,18 +57,13 @@ export const Login: React.FC = () => {
                 }
 
                 if (!data) {
-                    throw new Error('This CPF is not authorized for registration. Please contact the administrator.');
+                    throw new Error('This email is not authorized for registration. Please contact the administrator.');
                 }
             }
 
             const { error } = await supabase.auth.signUp({
                 email,
-                password,
-                options: {
-                    data: {
-                        cpf: cpf
-                    }
-                }
+                password
             });
 
             if (error) {
@@ -139,19 +132,6 @@ export const Login: React.FC = () => {
                         </div>
                         <div className="flex justify-end">
                             <a className="text-sm font-medium text-primary hover:text-primary/80 transition-colors" href="#">Forgot Password?</a>
-                        </div>
-                        <div className="group">
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5 ml-1">CPF (Only for Sign Up)</label>
-                            <div className="relative flex w-full items-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 focus-within:ring-2 focus-within:ring-primary transition-all duration-200">
-                                <span className="material-symbols-outlined absolute left-4 text-slate-400 select-none">badge</span>
-                                <input
-                                    className="flex h-14 w-full rounded-xl border-none bg-transparent py-3 pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm"
-                                    placeholder="Enter your CPF"
-                                    type="text"
-                                    value={cpf}
-                                    onChange={(e) => setCpf(e.target.value)}
-                                />
-                            </div>
                         </div>
                         <button
                             onClick={handleLogin}

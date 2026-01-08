@@ -49,7 +49,6 @@ const UsersList: React.FC = () => {
             <thead className="text-xs uppercase bg-slate-700/50 text-slate-400">
                 <tr>
                     <th className="px-4 py-3 rounded-tl-lg">Email</th>
-                    <th className="px-4 py-3">CPF</th>
                     <th className="px-4 py-3 rounded-tr-lg">Registrado em</th>
                 </tr>
             </thead>
@@ -57,7 +56,6 @@ const UsersList: React.FC = () => {
                 {users.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-800/50 transition-colors">
                         <td className="px-4 py-3">{u.email}</td>
-                        <td className="px-4 py-3 font-mono text-xs">{u.cpf || '-'}</td>
                         <td className="px-4 py-3 text-slate-500">
                             {new Date(u.created_at).toLocaleDateString()} {new Date(u.created_at).toLocaleTimeString()}
                         </td>
@@ -68,64 +66,64 @@ const UsersList: React.FC = () => {
     );
 };
 
-const AuthorizedCpfsList: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
-    const [cpfs, setCpfs] = useState<any[]>([]);
+const AuthorizedEmailsList: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+    const [emails, setEmails] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchCpfs = async () => {
+    const fetchEmails = async () => {
         setLoading(true);
         const { data, error } = await supabase
-            .from('authorized_cpfs')
+            .from('authorized_emails')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (data) setCpfs(data);
+        if (data) setEmails(data);
         setLoading(false);
     };
 
     useEffect(() => {
-        fetchCpfs();
+        fetchEmails();
     }, [refreshTrigger]);
 
-    const handleDelete = async (cpf: string) => {
-        if (!window.confirm(`Tem certeza que deseja remover a autorização do CPF ${cpf}?`)) return;
+    const handleDelete = async (email: string) => {
+        if (!window.confirm(`Tem certeza que deseja remover a autorização do e-mail ${email}?`)) return;
 
         try {
             const { error } = await supabase
-                .from('authorized_cpfs')
+                .from('authorized_emails')
                 .delete()
-                .eq('cpf', cpf);
+                .eq('email', email);
 
             if (error) throw error;
-            fetchCpfs();
+            fetchEmails();
         } catch (error) {
-            alert(`Erro ao remover CPF: ${(error as Error).message}`);
+            alert(`Erro ao remover e-mail: ${(error as Error).message}`);
         }
     };
 
-    if (loading && cpfs.length === 0) return <div className="text-sm text-slate-400">Carregando CPFs...</div>;
+    if (loading && emails.length === 0) return <div className="text-sm text-slate-400">Carregando e-mails...</div>;
 
-    if (cpfs.length === 0) return <div className="text-sm text-slate-400">Nenhum CPF autorizado encontrado.</div>;
+    if (emails.length === 0) return <div className="text-sm text-slate-400">Nenhum e-mail autorizado encontrado.</div>;
 
     return (
         <table className="w-full text-left text-sm text-slate-300">
             <thead className="text-xs uppercase bg-slate-700/50 text-slate-400">
                 <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">CPF</th>
+                    <th className="px-4 py-3 rounded-tl-lg">E-mail</th>
                     <th className="px-4 py-3">Autorizado em</th>
                     <th className="px-4 py-3 rounded-tr-lg text-right">Ações</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
-                {cpfs.map((c) => (
-                    <tr key={c.cpf} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs">{c.cpf}</td>
+                {emails.map((e) => (
+                    <tr key={e.email} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs">{e.email}</td>
                         <td className="px-4 py-3 text-slate-500 text-xs">
-                            {new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString()}
+                            {new Date(e.created_at).toLocaleDateString()} {new Date(e.created_at).toLocaleTimeString()}
                         </td>
                         <td className="px-4 py-3 text-right">
                             <button
-                                onClick={() => handleDelete(c.cpf)}
+                                onClick={() => handleDelete(e.email)}
                                 className="text-red-400 hover:text-red-300 transition-colors p-1"
                                 title="Remover Autorização"
                             >
@@ -143,9 +141,9 @@ const AuthorizedCpfsList: React.FC<{ refreshTrigger: number }> = ({ refreshTrigg
 const Home: React.FC = () => {
     const [promptData, setPromptData] = useState<PromptData>(INITIAL_STATE);
     const [user, setUser] = useState<User | null>(null);
-    const [authCpf, setAuthCpf] = useState('');
+    const [authEmail, setAuthEmail] = useState('');
     const [authMessage, setAuthMessage] = useState('');
-    const [refreshCpfs, setRefreshCpfs] = useState(0);
+    const [refreshEmails, setRefreshEmails] = useState(0);
     const navigate = useNavigate();
 
     const [testResult, setTestResult] = useState<string | null>(null);
@@ -171,15 +169,15 @@ const Home: React.FC = () => {
         navigate('/login');
     };
 
-    const handleAuthorizeCpf = async () => {
-        if (!authCpf) return;
+    const handleAuthorizeEmail = async () => {
+        if (!authEmail) return;
         setAuthMessage('Autorizando...');
         try {
-            const { error } = await supabase.from('authorized_cpfs').insert({ cpf: authCpf });
+            const { error } = await supabase.from('authorized_emails').insert({ email: authEmail });
             if (error) throw error;
-            setAuthMessage(`CPF ${authCpf} autorizado com sucesso!`);
-            setAuthCpf('');
-            setRefreshCpfs(prev => prev + 1);
+            setAuthMessage(`E-mail ${authEmail} autorizado com sucesso!`);
+            setAuthEmail('');
+            setRefreshEmails(prev => prev + 1);
             // Clear message after 3 seconds
             setTimeout(() => setAuthMessage(''), 3000);
         } catch (error) {
@@ -347,13 +345,13 @@ const Home: React.FC = () => {
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                             <input
                                 type="text"
-                                placeholder="CPF para autorizar"
-                                value={authCpf}
-                                onChange={(e) => setAuthCpf(e.target.value)}
+                                placeholder="E-mail para autorizar"
+                                value={authEmail}
+                                onChange={(e) => setAuthEmail(e.target.value)}
                                 className="px-3 py-2 rounded text-slate-900 text-sm w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-green-400"
                             />
                             <button
-                                onClick={handleAuthorizeCpf}
+                                onClick={handleAuthorizeEmail}
                                 className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm font-medium transition-colors whitespace-nowrap"
                             >
                                 Autorizar
@@ -366,18 +364,18 @@ const Home: React.FC = () => {
 
                     {/* Admin Lists */}
                     <div className="max-w-7xl mx-auto mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Authorized CPFs List */}
+                        {/* Authorized Emails List */}
                         <div className="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
                             <details className="group" open>
                                 <summary className="flex items-center justify-between p-4 cursor-pointer list-none text-sm font-medium text-slate-300 hover:text-white transition-colors bg-slate-800/50">
                                     <div className="flex items-center gap-2">
                                         <span className="material-symbols-outlined transition-transform group-open:rotate-90">arrow_right</span>
-                                        CPFs Autorizados
+                                        E-mails Autorizados
                                     </div>
                                     <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Gerenciamento</span>
                                 </summary>
                                 <div className="p-4 overflow-x-auto">
-                                    <AuthorizedCpfsList refreshTrigger={refreshCpfs} />
+                                    <AuthorizedEmailsList refreshTrigger={refreshEmails} />
                                 </div>
                             </details>
                         </div>

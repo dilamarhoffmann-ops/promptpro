@@ -1,23 +1,20 @@
--- 1. Tabela de CPFs Autorizados (Para o Admin controlar quem pode se cadastrar)
-create table if not exists public.authorized_cpfs (
-  cpf text primary key,
+-- 1. Tabela de E-mails Autorizados (Para o Admin controlar quem pode se cadastrar)
+create table if not exists public.authorized_emails (
+  email text primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Habilitar RLS (Row Level Security)
-alter table public.authorized_cpfs enable row level security;
+alter table public.authorized_emails enable row level security;
 
--- Política: Todos podem ler (para verificação durante o cadastro em authorized_cpfs)
-create policy "Todos podem ler authorized_cpfs"
-  on public.authorized_cpfs for select
+-- Política: Todos podem ler (para verificação durante o cadastro)
+create policy "Todos podem ler authorized_emails"
+  on public.authorized_emails for select
   using (true);
 
--- Política: Apenas Admin (dilamarhs@gmail.com) pode inserir/deletar
--- Nota: Como verificação de email via RLS pode ser complexa sem claims customizadas,
--- simplificamos permitindo insert para users autenticados mas controlamos no frontend ou via Trigger se quiser mais segurança.
--- Para máxima segurança, use: auth.jwt() ->> 'email' = 'dilamarhs@gmail.com'
-create policy "Admin pode gerenciar authorized_cpfs"
-  on public.authorized_cpfs for all
+-- Política: Apenas Admin (dilamarhs@gmail.com) pode gerenciar
+create policy "Admin pode gerenciar authorized_emails"
+  on public.authorized_emails for all
   using (auth.jwt() ->> 'email' = 'dilamarhs@gmail.com');
 
 
@@ -25,7 +22,7 @@ create policy "Admin pode gerenciar authorized_cpfs"
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade not null primary key,
   email text,
-  cpf text,
+  cpf text, -- Agora opcional
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -43,7 +40,7 @@ create policy "Usuário pode editar próprio perfil"
   using (auth.uid() = id);
 
 -- 3. Trigger para criar Perfil automaticamente ao criar Usuário no Auth
--- Esta função pega o CPF enviado nos metadados (options.data.cpf) e salva na tabela profiles
+-- Pega o CPF se existir (pode vir de cadastros antigos ou meta customizada)
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
