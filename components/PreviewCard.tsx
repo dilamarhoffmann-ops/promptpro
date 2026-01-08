@@ -11,11 +11,20 @@ interface PreviewCardProps {
 
 export const PreviewCard: React.FC<PreviewCardProps> = ({ prompt, onRunTest, isTesting, testResult }) => {
   const [copied, setCopied] = useState(false);
+  const [resultCopied, setResultCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyResult = () => {
+    if (testResult) {
+      navigator.clipboard.writeText(testResult);
+      setResultCopied(true);
+      setTimeout(() => setResultCopied(false), 2000);
+    }
   };
 
   return (
@@ -28,7 +37,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = ({ prompt, onRunTest, isT
             Prompt Gerado
           </h2>
           <div className="flex gap-2">
-             <button
+            <button
               onClick={onRunTest}
               disabled={!prompt || isTesting}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -45,7 +54,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = ({ prompt, onRunTest, isT
             </button>
           </div>
         </div>
-        
+
         <div className="p-6 overflow-y-auto font-mono text-sm leading-relaxed whitespace-pre-wrap flex-grow bg-slate-900">
           {prompt || <span className="text-slate-500 italic">Preencha os campos à esquerda para ver o prompt sendo construído em tempo real...</span>}
         </div>
@@ -54,8 +63,15 @@ export const PreviewCard: React.FC<PreviewCardProps> = ({ prompt, onRunTest, isT
       {/* Test Result Section */}
       {testResult && (
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-fade-in-up">
-           <div className="p-3 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
+          <div className="p-3 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
             <h3 className="font-semibold text-brand-800 text-sm">Resposta do Gemini</h3>
+            <button
+              onClick={handleCopyResult}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white hover:bg-slate-50 text-brand-700 border border-brand-100 rounded-md transition-colors"
+            >
+              {resultCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {resultCopied ? 'Copiado!' : 'Copiar Resposta'}
+            </button>
           </div>
           <div className="p-6 max-h-[400px] overflow-y-auto prose prose-slate prose-sm w-full max-w-none">
             <ReactMarkdown>{testResult}</ReactMarkdown>
