@@ -10,6 +10,16 @@ export const Login: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    React.useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                navigate('/');
+            }
+        };
+        checkSession();
+    }, [navigate]);
+
     const handleLogin = async () => {
         setLoading(true);
         setError(null);
@@ -22,6 +32,21 @@ export const Login: React.FC = () => {
             if (error) {
                 setError(error.message);
             } else {
+                // Check if email is authorized
+                if (email !== 'dilamarhs@gmail.com') {
+                    const { data: authData } = await supabase
+                        .from('authorized_emails')
+                        .select('email')
+                        .eq('email', email)
+                        .maybeSingle();
+
+                    if (!authData) {
+                        await supabase.auth.signOut();
+                        setError('Acesso negado. Seu e-mail não está autorizado.');
+                        setLoading(false);
+                        return;
+                    }
+                }
                 navigate('/');
             }
         } catch (err) {

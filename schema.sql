@@ -64,3 +64,28 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- 4. Tabela de Prompts (Histórico de gerações)
+-- (Detectado no Supabase, adicionado para sincronia)
+create table if not exists public.prompts (
+  id uuid primary key default gen_random_uuid(),
+  role text,
+  task text,
+  context text,
+  temperature float,
+  language text,
+  final_prompt text,
+  generated_response text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.prompts enable row level security;
+
+-- Políticas sugeridas para Prompts
+create policy "Usuários autenticados podem criar prompts"
+  on public.prompts for insert
+  with check (auth.role() = 'authenticated');
+
+create policy "Usuários podem ver seus próprios prompts" -- (Opcional, se quiser restringir)
+  on public.prompts for select
+  using (true); -- Por enquanto aberto ou ajuste conforme necessidade
